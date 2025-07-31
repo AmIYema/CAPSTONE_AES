@@ -1,0 +1,99 @@
+`timescale 1ns / 1ps
+
+module AES_128_Encrypt_tb();
+
+    // Testbench signals
+    reg  [127:0] tb_plaintext;
+    reg  [127:0] tb_cipher_key;
+    wire [127:0] tb_ciphertext;
+
+    // Instantiate the AES_128_Encrypt module
+    AES_128_Encrypt uut (
+        .plaintext(tb_plaintext),
+        .cipher_key(tb_cipher_key),
+        .ciphertext(tb_ciphertext)
+    );
+
+    // Task to display data in hex format neatly
+    task display_data;
+        input [127:0] data;
+        integer i;
+        begin
+            for (i = 15; i >= 0; i = i - 1) begin
+                $write("%02x", data[i*8 +: 8]);
+            end
+        end
+    endtask
+
+    initial begin
+        // Display test start
+        $display("Starting AES_128_Encrypt Testbench...");
+
+        // Test vector 1 (from NIST AES Known Answer Test for AES-128 ECB encrypt)
+        tb_plaintext = 128'h00112233445566778899aabbccddeeff;
+        tb_cipher_key = 128'h000102030405060708090a0b0c0d0e0f;
+
+        // Apply inputs and wait for a few clock cycles (assuming combinational or synchronous with small delay)
+        #50;
+
+        $display("Test Vector 1 Results:");
+        $write("Plaintext : 0x"); display_data(tb_plaintext); $write("\n");
+        $write("Cipher Key: 0x"); display_data(tb_cipher_key); $write("\n");
+        $write("Ciphertext: 0x"); display_data(tb_ciphertext); $write("\n");
+
+        // You can compare ciphertext against expected known ciphertext from test vectors:
+        // Expected output: 69c4e0d86a7b0430d8cdb78070b4c55a
+
+        if(tb_ciphertext === 128'h69c4e0d86a7b0430d8cdb78070b4c55a)
+            $display("Test Vector 1 PASSED");
+        else
+            $display("Test Vector 1 FAILED");
+            
+
+        // Test vector 2 (from NIST AES Known Answer Test for AES-128 ECB encrypt)
+        tb_plaintext = 128'h00000000000000000000000000000000;
+        tb_cipher_key = 128'h00000000000000000000000000000000;
+                             
+        // Apply inputs and wait for a few clock cycles (assuming combinational or synchronous with small delay)
+        #50;
+
+        $display("Test Vector 2 Results:");
+        $write("Plaintext : 0x"); display_data(tb_plaintext); $write("\n");
+        $write("Cipher Key: 0x"); display_data(tb_cipher_key); $write("\n");
+        $write("Ciphertext: 0x"); display_data(tb_ciphertext); $write("\n");
+
+        // You can compare ciphertext against expected known ciphertext from test vectors:
+        // Expected output: 69c4e0d86a7b0430d8cdb78070b4c55a
+
+        if(tb_ciphertext === 128'h66E94BD4EF8A2C3B884CFA59CA342B2E)
+            $display("Test Vector 2 PASSED");
+        else
+            $display("Test Vector 2 FAILED");
+
+        // Further test vectors could be added here for robustness
+        
+
+        // Test vector 1 (from NIST AES Known Answer Test for AES-128 ECB encrypt)
+        tb_plaintext = 128'hffffffffffffffffffffffffffffffff;
+        tb_cipher_key = 128'hffffffffffffffffffffffffffffffff;
+
+        // Apply inputs and wait for a few clock cycles (assuming combinational or synchronous with small delay)
+        #50;
+
+        $display("Test Vector 3 Results:");
+        $write("Plaintext : 0x"); display_data(tb_plaintext); $write("\n");
+        $write("Cipher Key: 0x"); display_data(tb_cipher_key); $write("\n");
+        $write("Ciphertext: 0x"); display_data(tb_ciphertext); $write("\n");
+
+        // You can compare ciphertext against expected known ciphertext from test vectors:
+        // Expected output: 69c4e0d86a7b0430d8cdb78070b4c55a
+
+        if(tb_ciphertext === 128'hBCBF217CB280CF30B2517052193AB979)
+            $display("Test Vector 3 PASSED");
+        else
+            $display("Test Vector 3 FAILED");
+
+        $display("Testbench completed.");
+        $finish;
+    end
+endmodule

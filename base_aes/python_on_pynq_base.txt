@@ -1,0 +1,85 @@
+from pynq import Overlay
+import time
+import random
+
+# Load bitstream
+overlay = Overlay("design_1_wrapper.xsa")
+print("Overlay loaded")
+
+# GPIO mappings
+a0 = overlay.axi_gpio_0.channel1
+a1 = overlay.axi_gpio_1.channel1
+a2 = overlay.axi_gpio_2.channel1
+a3 = overlay.axi_gpio_3.channel1
+
+b0 = overlay.axi_gpio_4.channel1
+b1 = overlay.axi_gpio_5.channel1
+b2 = overlay.axi_gpio_6.channel1
+b3 = overlay.axi_gpio_7.channel1
+
+out0 = overlay.axi_gpio_13.channel1
+out1 = overlay.axi_gpio_14.channel1
+out2 = overlay.axi_gpio_15.channel1
+out3 = overlay.axi_gpio_16.channel1
+
+# Set directions
+for gpio in (a0, a1, a2, a3, b0, b1, b2, b3):
+    gpio.setdirection("out")
+for gpio in (out0, out1, out2, out3):
+    gpio.setdirection("in")
+
+# Helpers
+def split_to_words(val):
+    return [(val >> (32 * i)) & 0xFFFFFFFF for i in range(4)]
+
+def combine_words(words):
+    return sum(words[i] << (32 * i) for i in range(4))
+
+# Timer setup
+start_time = time.time()
+duration = 5  # seconds
+total_encryptions = 0
+total_time = 0.0  # seconds
+
+# Main loop
+while time.time() - start_time < duration:
+    plaintext = random.getrandbits(128)
+    key = random.getrandbits(128)
+
+    pt_words = split_to_words(plaintext)
+    key_words = split_to_words(key)
+
+    # Record time before encryption
+    t0 = time.perf_counter()
+
+    # Write inputs
+    a0.write(pt_words[0], 0xFFFFFFFF)
+    a1.write(pt_words[1], 0xFFFFFFFF)
+    a2.write(pt_words[2], 0xFFFFFFFF)
+    a3.write(pt_words[3], 0xFFFFFFFF)
+
+    b0.write(key_words[0], 0xFFFFFFFF)
+    b1.write(key_words[1], 0xFFFFFFFF)
+    b2.write(key_words[2], 0xFFFFFFFF)
+    b3.write(key_words[3], 0xFFFFFFFF)
+
+    # Read output
+    out_words = [out0.read(), out1.read(), out2.read(), out3.read()]
+    ciphertext = combine_words(out_words)
+
+    # Record time after encryption
+    t1 = time.perf_counter()
+    elapsed = t1 - t0
+    total_encryptions += 1
+    total_time += elapsed
+
+    print(f"PT : {plaintext:032x}")
+    print(f"KEY: {key:032x}")
+    print(f"CT : {ciphertext:032x}")
+    print(f"Time for encryption: {elapsed * 1000:.3f} ms")
+    print("-" * 50)
+
+# Summary
+avg_time = (total_time / total_encryptions) * 1000  # ms
+print(f"Finished {total_encryptions} encryptions in 5 seconds.")
+print(f"Average encryption time: {avg_time:.3f} ms")

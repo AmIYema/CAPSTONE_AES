@@ -1,0 +1,108 @@
+from pynq import Overlay
+import random
+import time
+
+# === Load overlay ===
+overlay = Overlay("design_2_wrapper.xsa")  # update if filename differs
+print("Overlay loaded.")
+
+# === GPIO Mappings ===
+# 128-bit plaintext0 = 4 × 32-bit GPIOs
+pt0_gpios = [
+    overlay.axi_gpio_0.channel1,
+    overlay.axi_gpio_1.channel1,
+    overlay.axi_gpio_2.channel1,
+    overlay.axi_gpio_3.channel1,
+]
+
+# 128-bit plaintext1
+pt1_gpios = [
+    overlay.axi_gpio_4.channel1,
+    overlay.axi_gpio_5.channel1,
+    overlay.axi_gpio_6.channel1,
+    overlay.axi_gpio_7.channel1,
+]
+
+# 128-bit cipher key
+key_gpios = [
+    overlay.axi_gpio_8.channel1,
+    overlay.axi_gpio_9.channel1,
+    overlay.axi_gpio_10.channel1,
+    overlay.axi_gpio_11.channel1,
+]
+
+# 128-bit ciphertext0 (input to Python)
+ct0_gpios = [
+    overlay.axi_gpio_12.channel1,
+    overlay.axi_gpio_13.channel1,
+    overlay.axi_gpio_14.channel1,
+    overlay.axi_gpio_15.channel1,
+]
+
+# 128-bit ciphertext1
+ct1_gpios = [
+    overlay.axi_gpio_16.channel1,
+    overlay.axi_gpio_17.channel1,
+    overlay.axi_gpio_18.channel1,
+    overlay.axi_gpio_19.channel1,
+]
+
+# === Set directions ===
+for gpio in pt0_gpios + pt1_gpios + key_gpios:
+    gpio.setdirection("out")
+
+for gpio in ct0_gpios + ct1_gpios:
+    gpio.setdirection("in")
+
+# === Helper Functions ===
+def split_to_words(val):
+    return [(val >> (32 * i)) & 0xFFFFFFFF for i in range(4)]
+
+def combine_words(words):
+    return sum((w & 0xFFFFFFFF) << (32 * i) for i, w in enumerate(words))
+
+# === Single Test ===
+def run_aes2_once():
+    pt0 = random.getrandbits(128)
+    pt1 = random.getrandbits(128)
+    key = random.getrandbits(128)
+
+    pt0_words = split_to_words(pt0)
+    pt1_words = split_to_words(pt1)
+    key_words = split_to_words(key)
+
+    # Write inputs
+    for i in range(4):
+        pt0_gpios[i].write(pt0_words[i], 0xFFFFFFFF)
+        pt1_gpios[i].write(pt1_words[i], 0xFFFFFFFF)
+        key_gpios[i].write(key_words[i], 0xFFFFFFFF)
+
+
+    # Small wait for combinational logic to settle
+    time.sleep(0.001)
+
+    # Read outputs
+    ct0 = combine_words([ct0_gpios[i].read() for i in range(4)])
+    ct1 = combine_words([ct1_gpios[i].read() for i in range(4)])
+
+    # Display
+# === Run for 5 seconds ===
+duration = 5
+start = time.time()
+total = 0
+total_time = 0.0
+
+print("Running 2-block parallel AES for 5 seconds...\n")
+
+while time.time() - start < duration:
+    t0 = time.perf_counter()
+    run_aes2_once()
+    t1 = time.perf_counter()
+    total += 1
+    total_time += (t1 - t0)
+
+# === Summary ===
+avg_time = (total_time / total) * 1000
+print(f"\nFinished {total * 2} AES encryptions (2 per run) in {duration} seconds.")
+print(f"Average time per 2-block encryption: {avg_time:.3f} ms")
+print(f"Average time per AES block: {avg_time / 2:.3f} ms")
